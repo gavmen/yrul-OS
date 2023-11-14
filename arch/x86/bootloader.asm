@@ -82,10 +82,25 @@ init_pm:
     mov fs, ax
     mov gs, ax
 
-    ; Load the kernel and transfer control
+    ; Load the kernel from disk
+    call load_kernel
 
-    ; Halt CPU
-    hlt
+    ; Jump to kernel entry point (assuming 0x1000:0x0000)
+    jmp 0x1000:0x0000
+
+load_kernel:
+    ; Code to load the kernel from disk
+    mov bx, 0x1000  ; Load kernel to address 0x1000:0x0000
+    mov ah, 0x02    ; BIOS read sector function
+    mov al, 1       ; Read 1 sector
+    mov ch, 0       ; Cylinder number
+    mov cl, 2       ; Start reading from the second sector
+    mov dh, 0       ; Head number
+    mov dl, [BOOT_DRIVE] ; Boot drive number
+    int 0x13        ; BIOS disk interrupt
+    ret
+
+BOOT_DRIVE db 0
 
 CODE_SEG equ gdt_start + 8
 DATA_SEG equ gdt_start + 16
