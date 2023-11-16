@@ -1,7 +1,3 @@
-; stage 2 boot loader.
-; by Philip Simonson.
-; =======================
-
 [org 0x7e00]
 [bits 16]
 

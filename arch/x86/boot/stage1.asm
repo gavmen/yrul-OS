@@ -1,5 +1,3 @@
-; Stage 1 boot loader by Philip Simonson.
-
 [org 0x7c00]
 [bits 16]
 
