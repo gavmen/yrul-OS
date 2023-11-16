@@ -9,7 +9,9 @@ start:
     mov sp, 0xFFFF
     sti             ; Enable interrupts
 
-    call print_message  ; Call function to print a message
+    ; Print initial message
+    mov si, msg_start
+    call print_string
 
     ; Initialize GDT
     lgdt [gdt_descriptor]
@@ -22,6 +24,22 @@ start:
     or eax, 1
     mov cr0, eax
     jmp CODE_SEG:init_pm  ; Far jump to flush CPU pipeline
+
+; Functions to print messages to screen
+print_char:  ; Expects character in 'al'
+    mov ah, 0x0E  ; Teletype output function
+    int 0x10      ; BIOS interrupt for video services
+    ret
+
+print_string:  ; Expects address of string in 'si'
+    .next_char:
+        lodsb         ; Load next byte from SI into AL
+        test al, al   ; Check if it's null terminator
+        jz .done      ; If zero, we're done
+        call print_char
+        jmp .next_char
+    .done:
+        ret
 
 section .bss
 align 4
@@ -57,20 +75,9 @@ enable_a20:
     ; Add more code into it to specify hardware
     ret
 
-print_message:
-    mov ah, 0x0E        ; BIOS teletype mode
-    mov bx, msg
-    print_char:
-        mov al, [bx]
-        cmp al, 0
-        je done
-        int 0x10       ; BIOS video service
-        inc bx
-        jmp print_char
-    done:
-    ret
-
-msg db 'Booting Yrul OS...', 0
+; Data Section for storing strings and data
+section .data
+msg_start db 'Booting Yrul OS...', 0
 
 [bits 32]
 init_pm:

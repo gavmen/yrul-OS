@@ -10,6 +10,8 @@ KERNEL_DIR := arch/x86/kernel
 BUILD_DIR := build
 
 # Files
+STAGE1_SRC := $(BOOT_DIR)/stage1.asm
+STAGE2_SRC := $(BOOT_DIR)/stage2.asm
 KERNEL_SRC := $(wildcard $(KERNEL_DIR)/*.c)
 KERNEL_OBJ := $(patsubst $(KERNEL_DIR)/%.c, $(BUILD_DIR)/%.o, $(KERNEL_SRC))
 KERNEL_BIN := $(BUILD_DIR)/kernel.bin
@@ -21,16 +23,20 @@ CFLAGS := -ffreestanding -O2 -Wall -Wextra
 LDFLAGS := -T $(KERNEL_DIR)/linker.ld -nostdlib -L/usr/local/i686elfgcc/lib/gcc/i686-elf/11.2.0 -lgcc
 
 # Default build target
-all: bootloader $(OS_IMAGE)
+all: $(OS_IMAGE)
 
-bootloader:
-	$(MAKE) -C $(BOOT_DIR)
-	mv $(BOOT_DIR)/stage1.bin $(BUILD_DIR)/
-	mv $(BOOT_DIR)/stage2.bin $(BUILD_DIR)/
+# Assemble the bootloader stages
+$(BUILD_DIR)/stage1.bin: | $(BUILD_DIR)
+	cd $(BOOT_DIR) && $(AS) $(ASFLAGS) stage1.asm -o $(PWD)/$@
+
+$(BUILD_DIR)/stage2.bin: | $(BUILD_DIR)
+	cd $(BOOT_DIR) && $(AS) $(ASFLAGS) stage2.asm -o $(PWD)/$@
+
 
 # Rule to ensure the build directory exists
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
+
 
 # Compile the kernel
 $(BUILD_DIR)/%.o: $(KERNEL_DIR)/%.c
@@ -41,7 +47,7 @@ $(KERNEL_BIN): $(KERNEL_OBJ)
 	$(LD) $(LDFLAGS) $^ -o $@
 
 # Create the OS image
-$(OS_IMAGE): bootloader
+$(OS_IMAGE): $(BUILD_DIR)/stage1.bin $(BUILD_DIR)/stage2.bin $(KERNEL_BIN)
 	dd if=/dev/zero of=$(OS_IMAGE) bs=512 count=2880
 	dd if=$(BUILD_DIR)/stage1.bin of=$(OS_IMAGE) conv=notrunc
 	dd if=$(BUILD_DIR)/stage2.bin of=$(OS_IMAGE) seek=1 conv=notrunc
@@ -54,6 +60,5 @@ run: $(OS_IMAGE)
 # Clean build files
 clean:
 	rm -rf $(BUILD_DIR)/*
-	$(MAKE) -C $(BOOT_DIR) clean
 
-.PHONY: all run clean bootloader
+.PHONY: all run clean
